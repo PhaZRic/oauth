@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>Collegamento dashboard</title>
+<style>
+:root{--bg:#f4f4f6;--card:#fff;--fg:#18181b;--dim:#6b6b76;--acc:#1db954;--bd:#dcdce2;--err:#e53935}
+@media(prefers-color-scheme:dark){:root{--bg:#121212;--card:#1e1e1e;--fg:#f4f4f5;--dim:#a1a1aa;--bd:#333}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
+main{max-width:560px;margin:0 auto;padding:24px 16px}
+section{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:20px}
+h1{font-size:22px;margin:0 0 8px}
+p{margin:8px 0}.dim{color:var(--dim)}.err{color:var(--err)}
+a.btn,button{display:inline-block;margin-top:12px;padding:12px 20px;border:0;border-radius:8px;background:var(--acc);
+  color:#000;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}
+code{display:block;word-break:break-all;background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:10px;margin-top:8px;font-size:14px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main><section>
+  <h1 id="title">Collegamento in corso&hellip;</h1>
+  <p id="msg" class="dim">Ritorno alla dashboard.</p>
+  <a id="go" class="btn" hidden>Apri la dashboard</a>
+  <div id="manual" hidden>
+    <p class="dim">Se la dashboard non si apre, incolla questo codice nel portale web della dashboard
+      (sezione <span id="svc">del servizio</span>, &laquo;Se il collegamento non parte da solo&raquo;):</p>
+    <code id="code"></code>
+    <button id="copy" type="button">Copia codice</button>
+  </div>
+</section></main>
+<script>
+// Pagina di ritorno OAuth per le dashboard (Spotify, Google Calendar).
+// Non contiene segreti: il codice vale solo insieme al Client Secret, che sta sulla scheda,
+// scade in pochi minuti e si usa una volta. Lo state è "<ip della scheda>~<s|g>~<nonce>":
+// si inoltra il browser alla scheda, che controlla il nonce e scambia il codice.
+(function () {
+  var q = new URLSearchParams(location.search);
+  var parts = (q.get('state') || '').split('~');
+  var host = parts[0], svc = parts[1];
+  var name = svc === 's' ? 'Spotify' : svc === 'g' ? 'Google Calendar' : '';
+  // Solo indirizzi di rete locale: la pagina non deve poter rimandare a siti qualsiasi
+  var lan = /^(10(\.\d{1,3}){3}|192\.168(\.\d{1,3}){2}|172\.(1[6-9]|2\d|3[01])(\.\d{1,3}){2})$/;
+  var $ = function (id) { return document.getElementById(id); };
+
+  if (!q.has('code') && !q.has('error')) {
+    $('title').textContent = 'Collegamento dashboard';
+    $('msg').textContent = 'Questa pagina si usa solo per completare il collegamento di Spotify o Google Calendar dalla dashboard.';
+    return;
+  }
+  if (q.has('error')) {
+    $('title').textContent = 'Accesso annullato';
+    $('msg').textContent = 'Il collegamento non è stato autorizzato (' + q.get('error') + ').';
+    $('msg').className = 'err';
+  } else if (name) {
+    $('title').textContent = 'Collegamento di ' + name + '…';
+  }
+  if (q.has('code')) {
+    $('svc').textContent = name || 'del servizio';
+    $('code').textContent = q.get('code');
+    $('manual').hidden = false;
+    $('copy').onclick = function () {
+      navigator.clipboard.writeText(q.get('code')).then(function () { $('copy').textContent = 'Copiato'; });
+    };
+  }
+  if (!lan.test(host)) {
+    $('msg').textContent = 'Indirizzo della dashboard non valido.';
+    $('msg').className = 'err';
+    return;
+  }
+  var target = 'http://' + host + '/oauth' + location.search;
+  $('go').href = target;
+  $('go').hidden = false;
+  location.replace(target);
+})();
+</script>
+</body>
+</html>
